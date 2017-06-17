@@ -19,11 +19,25 @@ namespace ShapeDetection
 {
     public partial class MainForm : Form
     {
+        double dp = 1;    // 参数3：dp，不懂
+        double minDist = 40;     // 参数4：两个圆中心的最小距离
+        double cannyThreshold = 150;    // 参数5：边缘检测阈值（30~180）
+        double circleAccumulatorThreshold = 30;       // 参数6：累加器阈值（圆心重合点，越低的时候圆弧就越容易当成圆）
+        int minRadius = 20;
+        int maxRadius = 60;
+
         public MainForm()
         {
             InitializeComponent();
 
-            fileNameTextBox.Text = "pic3.png";
+            fileNameTextBox.Text = @"C:\Users\Csy\Desktop\新文件夹\大一点.jpg";
+
+            txtDp.Text = dp.ToString();
+            txtCandy.Text = cannyThreshold.ToString();
+            txtAccThr.Text = circleAccumulatorThreshold.ToString();
+            txtMinDist.Text = minDist.ToString();
+            txtMinCir.Text = minRadius.ToString();
+            txtMaxCir.Text = maxRadius.ToString();
         }
 
         public void PerformShapeDetection()
@@ -34,9 +48,9 @@ namespace ShapeDetection
 
                 //Load the image from file and resize it for display
                 Image<Bgr, Byte> img =
-                   new Image<Bgr, byte>(fileNameTextBox.Text)
-                   .Resize(400, 400, Emgu.CV.CvEnum.Inter.Linear, true);
-
+                   new Image<Bgr, byte>(fileNameTextBox.Text);
+                //.Resize(2000, 2000, Emgu.CV.CvEnum.Inter.Linear, true);
+                labelSize.Text = img.Width.ToString() + " , " + img.Height.ToString();
                 //转为灰度级图像
                 UMat uimage = new UMat();
                 CvInvoke.CvtColor(img, uimage, ColorConversion.Bgr2Gray);
@@ -49,15 +63,17 @@ namespace ShapeDetection
 
                 #region circle detection
                 Stopwatch watch = Stopwatch.StartNew();
-                double cannyThreshold = 180.0;
-                double circleAccumulatorThreshold = 120;
-                /*
-                 * 参数1：灰度级图像
-                 * 参数2：处理图像用的方法，在这里是固定
-                 * 参数3：两个圆中心的最小距离
-                 * 参数4：
-                 * */
-                CircleF[] circles = CvInvoke.HoughCircles(uimage, HoughType.Gradient, 2.0, 20.0, cannyThreshold, circleAccumulatorThreshold, 5, 10);
+
+                //// 参数1：灰度级图像
+                //// 参数2：处理图像用的方法，在这里是固定
+                //double dp = 1;    // 参数3：dp，不懂
+                //double minDist = 40;     // 参数4：两个圆中心的最小距离
+                //double cannyThreshold = 30;    // 参数5：边缘检测阈值
+                //double circleAccumulatorThreshold = 30;       // 参数6：累加器阈值（圆心重合点，越低的时候圆弧就越容易当成圆）
+                //int minRadius = 20;
+                //int maxRadius = 60;
+
+                CircleF[] circles = CvInvoke.HoughCircles(uimage, HoughType.Gradient, dp, minDist, cannyThreshold, circleAccumulatorThreshold, minRadius, maxRadius);
 
                 watch.Stop();
                 msgBuilder.Append(String.Format("Hough circles - {0} ms; ", watch.ElapsedMilliseconds));
@@ -65,7 +81,7 @@ namespace ShapeDetection
 
                 #region Canny and edge detection
                 watch.Reset(); watch.Start();
-                double cannyThresholdLinking = 120.0;
+                double cannyThresholdLinking = cannyThreshold;// 30;
                 UMat cannyEdges = new UMat();
                 CvInvoke.Canny(uimage, cannyEdges, cannyThreshold, cannyThresholdLinking);
 
@@ -152,7 +168,7 @@ namespace ShapeDetection
                     CvInvoke.Polylines(triangleRectangleImage, Array.ConvertAll(box.GetVertices(), Point.Round), true, new Bgr(Color.DarkOrange).MCvScalar, 2);
                 }
 
-                triangleRectangleImageBox.Image = triangleRectangleImage;
+                triangleRectangleImageBox.Image = cannyEdges;
                 #endregion
 
                 #region draw circles
@@ -170,7 +186,7 @@ namespace ShapeDetection
                 foreach (LineSegment2D line in lines)
                     CvInvoke.Line(lineImage, line.P1, line.P2, new Bgr(Color.Green).MCvScalar, 2);
 
-                lineImageBox.Image = lineImage;
+                lineImageBox.Image = uimage;
                 #endregion
             }
         }
@@ -187,6 +203,21 @@ namespace ShapeDetection
             {
                 fileNameTextBox.Text = openFileDialog1.FileName;
             }
+        }
+
+        /// <summary>
+        /// 调整参数后重新检测
+        /// </summary>
+        private void button1_Click(object sender, EventArgs e)
+        {
+            dp = int.Parse(txtDp.Text.Trim());
+            cannyThreshold = int.Parse(txtCandy.Text.Trim());
+            circleAccumulatorThreshold = int.Parse(txtAccThr.Text.Trim());
+            minDist = int.Parse(txtMinDist.Text.Trim());
+            minRadius = int.Parse(txtMinCir.Text.Trim());
+            maxRadius = int.Parse(txtMaxCir.Text.Trim());
+
+            PerformShapeDetection();
         }
     }
 }
